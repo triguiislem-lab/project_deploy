@@ -52,16 +52,31 @@ function ErrorBoundary({ children }) {
 }
 
 function Navbar() {
-  const { isAuthenticated, keycloak, loading, user } = useAuth();
+  const { isAuthenticated, keycloak, loading: authLoading, user } = useAuth();
   const { cart } = useCart();
   const { wishlist } = useWishlist();
   const location = useLocation();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [activeSidebar, setActiveSidebar] = useState(null);
   const [brands, setBrands] = useState([]);
+  const [brandsLoading, setBrandsLoading] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isContactPopupOpen, setIsContactPopupOpen] = useState(false);
   const userMenuRef = useRef(null);
+
+  // Track if the navbar is ready to display (auth is initialized)
+  const [navbarReady, setNavbarReady] = useState(false);
+
+  // Set navbar ready when auth is no longer loading
+  useEffect(() => {
+    if (!authLoading) {
+      // Add a small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        setNavbarReady(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading]);
 
   // Function to check if a path is active
   const isActive = (path) => {
@@ -90,17 +105,81 @@ function Navbar() {
   const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
-    // Fetch brands with error handling
+    // Fetch brands with error handling and caching
     const fetchBrands = async () => {
+      setBrandsLoading(true);
+
+      // Check if we have cached brands data
+      const cachedBrands = localStorage.getItem('cached_brands');
+      const cacheTimestamp = localStorage.getItem('cached_brands_timestamp');
+      const now = Date.now();
+      const cacheAge = cacheTimestamp ? now - parseInt(cacheTimestamp) : Infinity;
+      const cacheValid = cacheAge < 3600000; // Cache valid for 1 hour
+
+      // Use cached data if available and valid
+      if (cachedBrands && cacheValid) {
+        try {
+          const parsedBrands = JSON.parse(cachedBrands);
+          setBrands(parsedBrands);
+          setApiError(false);
+          setBrandsLoading(false);
+
+          // Refresh cache in background if older than 30 minutes
+          if (cacheAge > 1800000) {
+            refreshBrandsCache();
+          }
+          return;
+        } catch (e) {
+          // If parsing fails, continue to fetch from API
+          console.error('Error parsing cached brands:', e);
+        }
+      }
+
+      // Fetch from API if no cache or cache invalid
       try {
         const response = await axios.get("https://laravel-api.fly.dev/api/marques");
         setBrands(response.data);
         setApiError(false);
-      } catch (error) {
 
+        // Update cache
+        localStorage.setItem('cached_brands', JSON.stringify(response.data));
+        localStorage.setItem('cached_brands_timestamp', now.toString());
+      } catch (error) {
         setApiError(true);
         // Set empty brands array to prevent UI errors
         setBrands([]);
+
+        // Try to use expired cache as fallback
+        if (cachedBrands) {
+          try {
+            const parsedBrands = JSON.parse(cachedBrands);
+            setBrands(parsedBrands);
+          } catch (e) {
+            // Silent fail
+          }
+        }
+      } finally {
+        setBrandsLoading(false);
+      }
+    };
+
+    // Function to refresh cache in background
+    const refreshBrandsCache = async () => {
+      try {
+        const response = await axios.get("https://laravel-api.fly.dev/api/marques");
+        const newBrands = response.data;
+        localStorage.setItem('cached_brands', JSON.stringify(newBrands));
+        localStorage.setItem('cached_brands_timestamp', Date.now().toString());
+
+        // Only update state if data is different to avoid unnecessary re-renders
+        setBrands(prevBrands => {
+          if (JSON.stringify(newBrands) !== JSON.stringify(prevBrands)) {
+            return newBrands;
+          }
+          return prevBrands;
+        });
+      } catch (error) {
+        // Silent fail for background refresh
       }
     };
 
@@ -141,11 +220,12 @@ function Navbar() {
 
   const toggleContactPopup = () => setIsContactPopupOpen(!isContactPopupOpen);
 
-  if (loading) {
+  // Show loading skeleton while navbar is not ready
+  if (!navbarReady) {
     return (
       <div className="bg-white shadow-md py-4 px-6 flex justify-between items-center">
         {/* Logo skeleton */}
-        <div className="h-12 w-12 rounded-lg bg-gray-200 animate-pulse"></div>
+        <div className="h-14 w-14 rounded-lg bg-gray-200 animate-pulse"></div>
 
         {/* Navigation skeleton */}
         <div className="flex items-center space-x-6">
@@ -400,7 +480,15 @@ function Navbar() {
 
             {/* Brands list */}
             <div className="flex flex-col space-y-1">
-              {brands.length > 0 ? (
+              {brandsLoading ? (
+                // Loading state for brands
+                <div className="text-center py-8">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-300 mb-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <p className="text-gray-500">Chargement des marques...</p>
+                </div>
+              ) : brands.length > 0 ? (
                 brands.map((brand) => (
                   <Link
                     key={brand.id}
@@ -431,7 +519,7 @@ function Navbar() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  <p className="text-gray-500">Chargement des marques...</p>
+                  <p className="text-gray-500">Aucune marque trouvée</p>
                 </div>
               )}
             </div>
