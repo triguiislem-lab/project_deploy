@@ -79,28 +79,8 @@ export const optimizeResourceLoading = () => {
     document.head.appendChild(link);
   });
 
-  // Preload critical resources
-  const criticalResources = [
-    { href: '/img/logo.png', as: 'image' },
-    { href: '/fonts/main-font.woff2', as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' }
-  ];
-
-  criticalResources.forEach(resource => {
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.href = resource.href;
-    link.as = resource.as;
-
-    if (resource.type) {
-      link.type = resource.type;
-    }
-
-    if (resource.crossOrigin) {
-      link.crossOrigin = resource.crossOrigin;
-    }
-
-    document.head.appendChild(link);
-  });
+  // We'll use the ResourceHints component for preloading instead
+  // This avoids duplicate preloading and potential warnings
 };
 
 /**

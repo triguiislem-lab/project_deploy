@@ -87,13 +87,18 @@ const initKeycloak = async (onSuccess, onError) => {
             });
 
             // Race between initialization and timeout
+            // Use the dynamically created silent check SSO URL if available
+            const silentCheckSsoRedirectUri = window.silentCheckSSOUrl ||
+                                             (window.location.origin + '/silent-check-sso.html');
+
             const auth = await Promise.race([
                 keycloak.init({
                     onLoad: 'check-sso',
-                    silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
+                    silentCheckSsoRedirectUri: silentCheckSsoRedirectUri,
                     pkceMethod: 'S256',
-                    checkLoginIframe: false,
+                    checkLoginIframe: false, // Disable iframe check to avoid CSP issues
                     enableLogging: true, // Enable logging for debugging
+                    flow: 'standard', // Use standard flow instead of implicit
                 }),
                 timeoutPromise
             ]);

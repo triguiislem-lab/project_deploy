@@ -11,12 +11,49 @@ export const setupKeycloakFraming = () => {
     // Create a meta tag for frame-ancestors
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = "frame-ancestors 'self' https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud";
-    
+
+    // Include both your deployment domain and Keycloak domain
+    // This won't actually fix the Keycloak CSP issue (that needs server-side changes)
+    // but it will allow your site to frame other content
+    const deploymentDomain = window.location.origin;
+    meta.content = `frame-ancestors 'self' ${deploymentDomain} https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud`;
+
     // Add it to the head
     document.head.appendChild(meta);
-    
+
     console.log('Keycloak framing setup complete');
+
+    // Create a silent check SSO iframe
+    const createSilentCheckSSOFile = () => {
+      // This is a workaround for Keycloak silent check SSO
+      const silentCheckSSOHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Silent SSO check</title>
+          <script>
+            parent.postMessage(location.href, location.origin);
+          </script>
+        </head>
+        <body>
+          Silent check SSO iframe
+        </body>
+        </html>
+      `;
+
+      // Create a blob and get its URL
+      const blob = new Blob([silentCheckSSOHtml], { type: 'text/html' });
+      const silentCheckSSOUrl = URL.createObjectURL(blob);
+
+      // Store the URL for Keycloak to use
+      window.silentCheckSSOUrl = silentCheckSSOUrl;
+
+      return silentCheckSSOUrl;
+    };
+
+    // Create the silent check SSO file
+    createSilentCheckSSOFile();
+
     return true;
   } catch (error) {
     console.error('Failed to setup Keycloak framing:', error);
@@ -31,11 +68,11 @@ export const setupKeycloakFraming = () => {
 export const checkKeycloakServer = async (url) => {
   try {
     // Use a simple HEAD request to check if the server is reachable
-    const response = await fetch(url, { 
+    const response = await fetch(url, {
       method: 'HEAD',
       mode: 'no-cors' // This is needed for CORS restrictions
     });
-    
+
     // If we get here, the server is reachable (no-cors won't give status)
     return true;
   } catch (error) {

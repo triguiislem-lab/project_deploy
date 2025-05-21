@@ -43,30 +43,48 @@ const ResourceHints = () => {
     });
 
     // Preload critical resources - only include files that actually exist
+    // First check if the files exist before preloading
     const criticalResources = [
-      // Check if these files exist before preloading
-      // { href: '/img/logo.png', as: 'image' },
-      // { href: '/img/texture-bg.jpg', as: 'image' },
+      // We'll check if these files exist before preloading
       { href: '/img/interior-moodboard.png', as: 'image' }
     ];
 
-    criticalResources.forEach(resource => {
-      if (!document.querySelector(`link[rel="preload"][href="${resource.href}"]`)) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.href = resource.href;
-        link.as = resource.as;
-
-        if (resource.type) {
-          link.type = resource.type;
+    // Function to check if a file exists before preloading
+    const checkAndPreload = async (resource) => {
+      try {
+        // Check if the resource already has a preload link
+        if (document.querySelector(`link[rel="preload"][href="${resource.href}"]`)) {
+          return;
         }
 
-        if (resource.crossOrigin) {
-          link.crossOrigin = resource.crossOrigin;
-        }
+        // Check if the file exists
+        const response = await fetch(resource.href, { method: 'HEAD' });
+        if (response.ok) {
+          // File exists, create preload link
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.href = resource.href;
+          link.as = resource.as;
 
-        document.head.appendChild(link);
+          if (resource.type) {
+            link.type = resource.type;
+          }
+
+          if (resource.crossOrigin) {
+            link.crossOrigin = resource.crossOrigin;
+          }
+
+          document.head.appendChild(link);
+        }
+      } catch (error) {
+        // Silent fail - don't preload if there's an error
+        console.warn(`Failed to preload ${resource.href}:`, error);
       }
+    };
+
+    // Check and preload each resource
+    criticalResources.forEach(resource => {
+      checkAndPreload(resource);
     });
 
     // Prefetch likely navigation paths
@@ -86,24 +104,18 @@ const ResourceHints = () => {
       }
     });
 
-    // Add preload for web fonts
-    const fontPreloads = [
-      { href: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap', as: 'style' },
-      { href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap', as: 'style' }
+    // Add stylesheet links for web fonts (don't use preload)
+    const fontLinks = [
+      'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap',
+      'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap'
     ];
 
-    fontPreloads.forEach(font => {
-      if (!document.querySelector(`link[rel="preload"][href="${font.href}"]`)) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.href = font.href;
-        link.as = font.as;
-        document.head.appendChild(link);
-
-        // Also add the stylesheet link
+    fontLinks.forEach(href => {
+      if (!document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) {
+        // Add the stylesheet link directly - no preload
         const styleLink = document.createElement('link');
         styleLink.rel = 'stylesheet';
-        styleLink.href = font.href;
+        styleLink.href = href;
         document.head.appendChild(styleLink);
       }
     });
