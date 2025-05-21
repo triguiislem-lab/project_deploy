@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import "../style/style.css";
 import { useNavigate } from "react-router-dom";
 import Categorie from '../Produit/Categorie.jsx';
-import DiscountModal from "../DiscountBanner";
 import { useAuth } from "../Contexts/AuthContext";
 import EnhancedLazyImage from "../Components/EnhancedLazyImage";
 import OptimizedCarousel from "../Components/OptimizedCarousel";
@@ -38,12 +37,10 @@ const heroSettings = {
 
 function Home() {
   const [categoriesEnVedette, setCategoriesEnVedette] = useState([]); // État pour les catégories en vedette
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isFirstLogin, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [carrouselSlides, setCarrouselSlides] = useState([]);
   const [isCarouselLoading, setIsCarouselLoading] = useState(true);
   const [carouselError, setCarouselError] = useState(null);
-
 
 
   const navigate = useNavigate();
@@ -54,13 +51,6 @@ function Home() {
     // Add any component initialization logic here if needed
     // This keeps the component lifecycle hook for future use
   }, []);
-
-  // Afficher la modale si c'est la première connexion
-  useEffect(() => {
-    if (isFirstLogin) {
-      setIsModalOpen(true);
-    }
-  }, [isFirstLogin]);
 
   // Récupération optimisée des catégories en vedette
   const fetchCategories = useCallback(async () => {
@@ -105,10 +95,6 @@ function Home() {
       }
     }
   }, [isAuthenticated, navigate]);
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-  };
 
 
 
@@ -174,9 +160,6 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-serif">
-      {/* 🔹 Modale de réduction */}
-      <DiscountModal isOpen={isModalOpen} onClose={closeModal} />
-
       {/* 🔹 HERO CAROUSEL - Enhanced with better styling */}
       <section className="relative w-full overflow-hidden">
         {/* Optimized Carousel Component */}

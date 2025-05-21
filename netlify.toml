@@ -6,6 +6,25 @@
   command = "npm run dev"
   port = 5173
 
+# Add security headers for all pages
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Content Security Policy - properly configured for Keycloak
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://laravel-api.fly.dev https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud; frame-src 'self' https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud; frame-ancestors 'self' https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud;"
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    # Prevent clickjacking
+    X-Frame-Options = "SAMEORIGIN"
+    # Enable browser XSS protection
+    X-XSS-Protection = "1; mode=block"
+    # Strict Transport Security
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Referrer Policy
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Permissions Policy
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

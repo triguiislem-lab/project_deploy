@@ -4,8 +4,7 @@ import "../style/style.css";
 import { useNavigate } from "react-router-dom";
 import Categorie from '../Produit/Categorie.jsx';
 import axios from "axios";
-import DiscountModal from "@/DiscountBanner";
-import { useAuth } from "@/Contexts/AuthContext";
+import { useAuth } from "../Contexts/AuthContext";
 import OptimizedCarousel from "../Components/OptimizedCarousel";
 import apiService from "../utils/apiService";
 import DynamicButton from "../Components/DynamicButton";
@@ -26,8 +25,7 @@ const heroSettings = {
 
 export function Home() {
   const [categoriesEnVedette, setCategoriesEnVedette] = useState([]); // État pour les catégories en vedette
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isFirstLogin, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [carrouselSlides, setCarrouselSlides] = useState([]);
   const [isCarouselLoading, setIsCarouselLoading] = useState(true);
   const [carouselError, setCarouselError] = useState(null);
@@ -93,13 +91,6 @@ export function Home() {
     };
   }, []);
 
-  // Utilisation de useEffect pour récupérer les catégories via notre service API optimisé
-  useEffect(() => {
-    if (isFirstLogin) {
-      setIsModalOpen(true); // Afficher la modale si c'est la première connexion
-    }
-  }, [isFirstLogin]);
-
   // Utilisation de useEffect pour récupérer les catégories en vedette avec notre service API optimisé
   useEffect(() => {
     apiService.get('/categories/featured')
@@ -123,10 +114,6 @@ export function Home() {
       }
     }
   }, [isAuthenticated, navigate]);
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-  };
 
   // Optimized carousel loading with caching and preloading
   useEffect(() => {
@@ -190,9 +177,6 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-serif">
-      {/* 🔹 Modale de réduction */}
-      <DiscountModal isOpen={isModalOpen} onClose={closeModal} />
-
       {/* 🔹 HERO CAROUSEL - Using OptimizedCarousel component */}
       <section className="relative w-full">
         <OptimizedCarousel

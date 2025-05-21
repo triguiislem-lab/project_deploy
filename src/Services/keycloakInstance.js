@@ -1,9 +1,9 @@
 import Keycloak from 'keycloak-js';
-import { createFallbackKeycloak, checkKeycloakServer } from '../utils/keycloakHelper';
+import { createFallbackKeycloak, checkKeycloakServer, ensureHttpsUrl } from '../utils/keycloakHelper';
 
-// Create a single Keycloak instance
+// Create a single Keycloak instance with HTTPS URL to prevent mixed content warnings
 const keycloakConfig = {
-    url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080',
+    url: ensureHttpsUrl(import.meta.env.VITE_KEYCLOAK_URL || 'https://localhost:8080'),
     realm: import.meta.env.VITE_KEYCLOAK_REALM || 'master',
     clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'frontend'
 };
@@ -76,8 +76,8 @@ const initKeycloak = async (onSuccess, onError) => {
         }
     }
 
-    // Start initialization with timeout
-    const INIT_TIMEOUT = 10000; // 10 seconds timeout
+    // Start initialization with increased timeout
+    const INIT_TIMEOUT = 20000; // 20 seconds timeout (increased from 10s)
 
     initializationPromise = (async () => {
         try {
@@ -91,28 +91,74 @@ const initKeycloak = async (onSuccess, onError) => {
             const silentCheckSsoRedirectUri = window.silentCheckSSOUrl ||
                                              (window.location.origin + '/silent-check-sso.html');
 
-            const auth = await Promise.race([
-                keycloak.init({
-                    onLoad: 'check-sso',
-                    silentCheckSsoRedirectUri: silentCheckSsoRedirectUri,
-                    pkceMethod: 'S256',
-                    checkLoginIframe: false, // Disable iframe check to avoid CSP issues
-                    enableLogging: true, // Enable logging for debugging
-                    flow: 'standard', // Use standard flow instead of implicit
-                }),
-                timeoutPromise
-            ]);
+            // First attempt with standard settings
+            try {
+                const auth = await Promise.race([
+                    keycloak.init({
+                        onLoad: 'check-sso',
+                        silentCheckSsoRedirectUri: silentCheckSsoRedirectUri,
+                        pkceMethod: 'S256',
+                        checkLoginIframe: false, // Disable iframe check to avoid CSP issues
+                        enableLogging: true, // Enable logging for debugging
+                        flow: 'standard', // Use standard flow instead of implicit
+                    }),
+                    timeoutPromise
+                ]);
 
-            // Mark as initialized
-            isInitialized = true;
-            console.log('Keycloak initialized successfully:', auth);
+                // Mark as initialized
+                isInitialized = true;
+                console.log('Keycloak initialized successfully:', auth);
 
-            // Call success callback
-            if (onSuccess) {
-                onSuccess(auth);
+                // Call success callback
+                if (onSuccess) {
+                    onSuccess(auth);
+                }
+
+                return auth;
+            } catch (initialError) {
+                // Log the initial error
+                console.warn('Standard Keycloak initialization failed, trying fallback settings:', initialError);
+
+                // Second attempt with fallback settings
+                try {
+                    // Create a new timeout promise for the fallback attempt
+                    const fallbackTimeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Fallback Keycloak initialization timed out')), INIT_TIMEOUT);
+                    });
+
+                    // Try with more permissive settings
+                    const fallbackAuth = await Promise.race([
+                        keycloak.init({
+                            onLoad: 'check-sso',
+                            silentCheckSsoRedirectUri: silentCheckSsoRedirectUri,
+                            pkceMethod: 'S256',
+                            checkLoginIframe: false,
+                            enableLogging: true,
+                            responseMode: 'fragment', // Try fragment mode instead
+                            flow: 'standard',
+                        }),
+                        fallbackTimeoutPromise
+                    ]);
+
+                    // Mark as initialized if fallback succeeded
+                    isInitialized = true;
+                    console.log('Keycloak initialized with fallback settings:', fallbackAuth);
+
+                    // Call success callback
+                    if (onSuccess) {
+                        onSuccess(fallbackAuth);
+                    }
+
+                    return fallbackAuth;
+                } catch (fallbackError) {
+                    // Both attempts failed, throw the error to be caught by the outer catch
+                    throw {
+                        initialError,
+                        fallbackError,
+                        message: 'All Keycloak initialization attempts failed'
+                    };
+                }
             }
-
-            return auth;
         } catch (error) {
             console.error('Keycloak initialization error:', error);
             // Reset initialization promise so we can try again
@@ -123,13 +169,18 @@ const initKeycloak = async (onSuccess, onError) => {
                 // Provide more context about the error
                 const enhancedError = {
                     originalError: error,
-                    message: 'Failed to initialize Keycloak authentication',
+                    message: 'Failed to initialize Keycloak authentication after multiple attempts',
                     keycloakConfig: {
                         url: keycloakConfig.url,
                         realm: keycloakConfig.realm,
                         clientId: keycloakConfig.clientId
                     },
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    browserInfo: {
+                        userAgent: navigator.userAgent,
+                        protocol: window.location.protocol,
+                        host: window.location.host
+                    }
                 };
                 onError(enhancedError);
             }
