@@ -13,7 +13,9 @@ const ResourceHints = () => {
     const preconnectDomains = [
       'https://laravel-api.fly.dev',
       'https://fonts.googleapis.com',
-      'https://fonts.gstatic.com'
+      'https://fonts.gstatic.com',
+      'https://cdnjs.cloudflare.com',
+      'https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud'
     ];
 
     preconnectDomains.forEach(domain => {
@@ -30,7 +32,9 @@ const ResourceHints = () => {
     const dnsPrefetchDomains = [
       'https://laravel-api.fly.dev',
       'https://fonts.googleapis.com',
-      'https://fonts.gstatic.com'
+      'https://fonts.gstatic.com',
+      'https://cdnjs.cloudflare.com',
+      'https://keycloak-prod.1squalq6nmfj.eu-de.codeengine.appdomain.cloud'
     ];
 
     dnsPrefetchDomains.forEach(domain => {
@@ -104,10 +108,11 @@ const ResourceHints = () => {
       }
     });
 
-    // Add stylesheet links for web fonts (don't use preload)
+    // Add stylesheet links for web fonts and icons (don't use preload)
     const fontLinks = [
       'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap',
-      'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap'
+      'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap',
+      'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css'
     ];
 
     fontLinks.forEach(href => {

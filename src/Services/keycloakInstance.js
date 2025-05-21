@@ -77,7 +77,7 @@ const initKeycloak = async (onSuccess, onError) => {
     }
 
     // Start initialization with increased timeout
-    const INIT_TIMEOUT = 20000; // 20 seconds timeout (increased from 10s)
+    const INIT_TIMEOUT = 30000; // 30 seconds timeout (increased from 20s)
 
     initializationPromise = (async () => {
         try {
@@ -87,9 +87,8 @@ const initKeycloak = async (onSuccess, onError) => {
             });
 
             // Race between initialization and timeout
-            // Use the dynamically created silent check SSO URL if available
-            const silentCheckSsoRedirectUri = window.silentCheckSSOUrl ||
-                                             (window.location.origin + '/silent-check-sso.html');
+            // Use the public silent-check-sso.html file first, then fall back to the dynamically created one
+            const silentCheckSsoRedirectUri = window.location.origin + '/silent-check-sso.html';
 
             // First attempt with standard settings
             try {
@@ -101,6 +100,7 @@ const initKeycloak = async (onSuccess, onError) => {
                         checkLoginIframe: false, // Disable iframe check to avoid CSP issues
                         enableLogging: true, // Enable logging for debugging
                         flow: 'standard', // Use standard flow instead of implicit
+                        promiseType: 'native' // Use native promises
                     }),
                     timeoutPromise
                 ]);
@@ -136,6 +136,7 @@ const initKeycloak = async (onSuccess, onError) => {
                             enableLogging: true,
                             responseMode: 'fragment', // Try fragment mode instead
                             flow: 'standard',
+                            promiseType: 'native' // Use native promises
                         }),
                         fallbackTimeoutPromise
                     ]);

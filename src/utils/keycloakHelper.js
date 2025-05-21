@@ -19,9 +19,21 @@ export const setupKeycloakFraming = () => {
         <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="utf-8">
           <title>Silent SSO check</title>
           <script>
-            parent.postMessage(location.href, location.origin);
+            // Use a try-catch to handle potential CSP issues
+            try {
+              parent.postMessage(location.href, location.origin);
+            } catch (e) {
+              console.error('Silent check SSO error:', e);
+              // Try with wildcard origin as fallback
+              try {
+                parent.postMessage(location.href, '*');
+              } catch (e2) {
+                console.error('Silent check SSO fallback error:', e2);
+              }
+            }
           </script>
         </head>
         <body>
@@ -42,6 +54,10 @@ export const setupKeycloakFraming = () => {
 
     // Create the silent check SSO file
     createSilentCheckSSOFile();
+
+    // Also check if we need to use the public silent-check-sso.html file
+    const publicSilentCheckSSOUrl = window.location.origin + '/silent-check-sso.html';
+    window.publicSilentCheckSSOUrl = publicSilentCheckSSOUrl;
 
     return true;
   } catch (error) {
