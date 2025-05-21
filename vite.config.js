@@ -35,6 +35,7 @@ export default defineConfig(({ command, mode }) => {
 
     resolve: {
       alias: [{ find: "@", replacement: "/src" }],
+      dedupe: ['react', 'react-dom'],
     },
 
     build: {
@@ -49,29 +50,17 @@ export default defineConfig(({ command, mode }) => {
           drop_debugger: isProduction,
         },
       },
+
       // Chunk size warning limit
       chunkSizeWarningLimit: 1000,
       // Rollup options
       rollupOptions: {
         output: {
-          // Chunk naming strategy
-          manualChunks: (id) => {
-            // Create separate chunks for large dependencies
-            if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
-              if (id.includes('@material-tailwind')) {
-                return 'vendor-material-tailwind';
-              }
-              if (id.includes('slick-carousel') || id.includes('react-slick')) {
-                return 'vendor-carousel';
-              }
-              if (id.includes('bootstrap')) {
-                return 'vendor-bootstrap';
-              }
-              return 'vendor'; // all other packages
-            }
+          // Ensure React is loaded first by using a predictable chunk name
+          // and setting up proper chunk loading order
+          manualChunks: {
+            'vendor-react-core': ['react', 'react-dom', 'react/jsx-runtime'],
+            'vendor-react-router': ['react-router-dom'],
           },
         },
       },
@@ -82,6 +71,11 @@ export default defineConfig(({ command, mode }) => {
       hmr: true,
       port: 5173,
       host: true,
+    },
+
+    // Optimize dependencies
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react/jsx-runtime', 'react-router-dom', '@material-tailwind/react'],
     },
   };
 });
